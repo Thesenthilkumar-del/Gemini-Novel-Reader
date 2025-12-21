@@ -221,7 +221,7 @@ export function validateSourceUrl(url: string): ValidationResult {
  */
 export function validateRequest(
   requestData: any,
-  type: 'translate' | 'scrape'
+  type: 'translate' | 'scrape' | 'nextChapter'
 ): RequestValidation {
   const errors: string[] = [];
 
@@ -274,6 +274,27 @@ export function validateRequest(
       errors.push(`URL: ${urlValidation.error}`);
     } else {
       sanitized.url = urlValidation.sanitizedUrl || url;
+    }
+  } else if (type === 'nextChapter') {
+    const { url } = requestData;
+
+    if (!url || typeof url !== 'string') {
+      errors.push('URL is required and must be a string');
+    } else {
+      // For nextChapter, we need to validate the URL format but be more permissive
+      // since it can be any novel chapter URL from various domains
+      try {
+        const urlObj = new URL(url);
+        
+        // Only allow HTTP and HTTPS
+        if (!['http:', 'https:'].includes(urlObj.protocol)) {
+          errors.push('Only HTTP and HTTPS protocols are allowed');
+        } else {
+          sanitized.url = url;
+        }
+      } catch {
+        errors.push('Invalid URL format');
+      }
     }
   }
 
