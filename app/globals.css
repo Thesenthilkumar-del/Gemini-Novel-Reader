@@ -10,7 +10,7 @@ body {
 
 /* Custom prose styling for paper-like reading experience */
 .prose {
-  @apply text-gray-800;
+  @apply text-gray-800 dark:text-gray-200;
 }
 
 .prose h1,
@@ -19,7 +19,7 @@ body {
 .prose h4,
 .prose h5,
 .prose h6 {
-  @apply font-bold text-amber-900 mt-6 mb-4;
+  @apply font-bold text-amber-900 dark:text-amber-400 mt-6 mb-4;
 }
 
 .prose h1 {
@@ -48,26 +48,48 @@ body {
 }
 
 .prose blockquote {
-  @apply border-l-4 border-amber-300 pl-4 italic my-4 text-gray-700;
+  @apply border-l-4 border-amber-300 dark:border-amber-600 pl-4 italic my-4 text-gray-700 dark:text-gray-300;
 }
 
 .prose code {
-  @apply bg-amber-50 px-1.5 py-0.5 rounded text-sm font-mono;
+  @apply bg-amber-50 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono;
 }
 
 .prose pre {
-  @apply bg-amber-50 p-4 rounded-lg overflow-x-auto mb-4;
+  @apply bg-amber-50 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto mb-4;
 }
 
 .prose a {
-  @apply text-amber-700 hover:text-amber-900 underline;
+  @apply text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline;
 }
 
 .prose strong {
-  @apply font-bold text-gray-900;
+  @apply font-bold text-gray-900 dark:text-gray-100;
 }
 
 .prose em {
   @apply italic;
+}
+
+/* Dark mode background */
+.dark {
+  @apply bg-gray-900 text-white;
+}
+
+/* Dark mode scrollbar */
+.dark::-webkit-scrollbar {
+  @apply w-2;
+}
+
+.dark::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+.dark::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded;
+}
+
+.dark::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
 }
 
