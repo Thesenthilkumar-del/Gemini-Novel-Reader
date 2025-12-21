@@ -29,7 +29,7 @@ npm install
 
 2. Create a `.env.local` file in the root directory:
 ```
-GEMINI_API_KEY=your_gemini_api_key_here
+GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
 ```
 
 3. Run the development server:
