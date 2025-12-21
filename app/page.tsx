@@ -149,8 +149,8 @@ export default function Home() {
 
       if (!translateRes.ok) throw new Error('Translation failed');
 
-      const { translation } = await translateRes.json();
-      setTranslatedContent(translation || '');
+      const { translatedText } = await translateRes.json();
+      setTranslatedContent(translatedText || '');
 
       // 3. Navigation (Regex + Heuristic Backup)
       let finalNext: string | null = markdown.match(/\[(?:Next|Continue|下一章)[^\]]*\]\(([^)]+)\)/i)?.[1] || null;
@@ -162,7 +162,7 @@ export default function Home() {
       setPrevUrl(finalPrev);
 
       // 4. Save
-      if (translation) {
+      if (translatedText) {
         setTimeout(() => saveChapterData(), 500);
       }
     } catch (err: any) {
