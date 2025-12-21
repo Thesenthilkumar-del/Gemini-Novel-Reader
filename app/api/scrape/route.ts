@@ -6,6 +6,7 @@ import {
   getClientIP, 
   logSecurityEvent
 } from '../../lib/security';
+import { scraper } from '../../lib/scraper';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -107,63 +108,42 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    // Timeout wrapper for scraping
-    const timeout = (promise: Promise<any>, ms: number) => {
-      return Promise.race([
-        promise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Scrape request timeout after 60 seconds')), ms)
-        )
-      ]);
-    };
-
     try {
-      // Scrape the content using r.jina.ai (which is what the client uses)
-      const scrapeUrl = `https://r.jina.ai/${url}`;
-      
+      // Use the scraper class for content extraction
       logSecurityEvent('SCRAPE_START', {
         ip,
         userAgent,
         url: request.url,
-        reason: `Scraping: ${scrapeUrl}`
+        reason: `Scraping: ${url}`
       });
 
-      const response = await timeout(
-        fetch(scrapeUrl, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Gemini Novel Reader/1.0',
-            'Accept': 'text/plain, text/markdown, text/html;q=0.9, */*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-          // Prevent following redirects to avoid SSRF
-          redirect: 'follow'
-        }), 
-        60000
-      ) as Response;
+      const scrapeResult = await scraper.scrape(url!, {
+        timeout: 60000,
+        userAgent: 'Gemini Novel Reader/1.0',
+        maxSize: 1 * 1024 * 1024 // 1MB
+      });
 
-      if (!response.ok) {
+      // Check for scraper errors
+      if (scrapeResult.error) {
         logSecurityEvent('SCRAPE_HTTP_ERROR', {
           ip,
           userAgent,
           url: request.url,
-          reason: `HTTP error ${response.status}: ${response.statusText}`
+          reason: `Scraper error: ${scrapeResult.error}`
         });
 
         return NextResponse.json(
-          { 
+          {
             error: 'Failed to scrape content',
-            message: `Remote server returned ${response.status}: ${response.statusText}`,
-            status: response.status
+            message: scrapeResult.error,
+            status: 502
           },
           { status: 502 }
         );
       }
 
-      const content = await response.text();
-      
+      const content = scrapeResult.content;
+
       // Validate content size
       if (!cacheHelpers.isValidContentSize(content)) {
         logSecurityEvent('SCRAPE_CONTENT_TOO_LARGE', {
@@ -174,7 +154,7 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json(
-          { 
+          {
             error: 'Scraped content exceeds 1MB limit',
             maxSize: '1MB',
             contentSize: cacheHelpers.getContentSize(content)
@@ -202,7 +182,7 @@ export async function POST(request: NextRequest) {
       await cache.setScrape(url!, content);
 
       const responseTime = Date.now() - startTime;
-      const result = NextResponse.json({ 
+      const result = NextResponse.json({
         content,
         sourceUrl: url!,
         cached: false,
@@ -222,18 +202,19 @@ export async function POST(request: NextRequest) {
 
       return result;
 
-    } catch (fetchError: any) {
-      // Handle timeout errors specifically
-      if (fetchError.message?.includes('timeout') || fetchError.message?.includes('timed out')) {
-        logSecurityEvent('SCRAPE_TIMEOUT', {
-          ip,
-          userAgent,
-          url: request.url,
-          reason: `Scrape request timed out: ${fetchError.message}`
-        });
+    } catch (scrapeError: any) {
+      // Handle scraper errors
+      logSecurityEvent('SCRAPE_ERROR', {
+        ip,
+        userAgent,
+        url: request.url,
+        reason: `Scraper error: ${scrapeError.message}`
+      });
 
+      // Handle timeout errors specifically
+      if (scrapeError.message?.includes('timeout') || scrapeError.message?.includes('timed out')) {
         return NextResponse.json(
-          { 
+          {
             error: 'Scrape request timed out',
             message: 'The scraping service is taking too long to respond. Please try again later.',
             retryAfter: 30
@@ -242,19 +223,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Handle network errors
-      logSecurityEvent('SCRAPE_NETWORK_ERROR', {
-        ip,
-        userAgent,
-        url: request.url,
-        reason: `Network error during scraping: ${fetchError.message}`
-      });
-
+      // Handle network and other scraper errors
       return NextResponse.json(
-        { 
+        {
           error: 'Failed to scrape content',
-          message: 'Network error occurred while fetching content from source.',
-          details: fetchError.message
+          message: scrapeError.message || 'Scraping failed',
+          details: scrapeError.message
         },
         { status: 502 }
       );
@@ -262,7 +236,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Scrape Error:', error);
-    
+
     // Log the final error
     logSecurityEvent('SCRAPE_FINAL_ERROR', {
       ip,
@@ -272,9 +246,9 @@ export async function POST(request: NextRequest) {
     });
 
     const responseTime = Date.now() - startTime;
-    
+
     // Return appropriate error response
-    const errorResponse = { 
+    const errorResponse = {
       error: 'Internal scraping error',
       message: 'An unexpected error occurred during content scraping.',
       requestId: Date.now().toString(),
@@ -283,7 +257,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(errorResponse, { status: 500 });
   }
-}
+  }
 
 export async function GET(request: NextRequest) {
   // Allow checking scrape status or cache info
