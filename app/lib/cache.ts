@@ -170,7 +170,7 @@ export class Cache {
   /**
    * Set cached scrape result
    */
-  async setScrape(sourceUrl: string, content: string): Promise<void> {
+  async setScrape(sourceUrl: string, content: string, customTtl?: number): Promise<void> {
     const key = this.generateScrapeKey(sourceUrl);
     const cacheData: ScrapeCache = {
       content,
