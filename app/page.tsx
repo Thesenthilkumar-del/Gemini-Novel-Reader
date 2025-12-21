@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Loader2, BookOpen, Menu, History, ChevronLeft, ChevronRight, Check, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { saveChapter, getChapter, deleteChapter, getAllChapters, type ChapterData } from './lib/storage';
@@ -19,6 +19,15 @@ export default function Home() {
   const [isSaved, setIsSaved] = useState(false);
   const [jumpToInput, setJumpToInput] = useState('');
 
+  const checkIfSaved = useCallback(async () => {
+    try {
+      const chapter = await getChapter(url);
+      setIsSaved(!!chapter);
+    } catch (e) {
+      setIsSaved(false);
+    }
+  }, [url]);
+
   // Load history on mount
   useEffect(() => {
     loadChapters();
@@ -27,7 +36,7 @@ export default function Home() {
   // Check saved status when content changes
   useEffect(() => {
     if (url && translatedContent) checkIfSaved();
-  }, [url, translatedContent]);
+  }, [url, translatedContent, checkIfSaved]);
 
   const loadChapters = async () => {
     try {
@@ -38,14 +47,6 @@ export default function Home() {
     }
   };
 
-  const checkIfSaved = async () => {
-    try {
-      const chapter = await getChapter(url);
-      setIsSaved(!!chapter);
-    } catch (e) {
-      setIsSaved(false);
-    }
-  };
 
   // 🧠 SMART URL PREDICTOR (Fixes Next Button)
   const predictNextUrl = (currentUrl: string) => {
