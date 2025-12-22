@@ -124,14 +124,14 @@ export async function POST(request: NextRequest) {
       // Continue to translation if cache fails
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
       return NextResponse.json(
         { error: 'Translation service is not configured' },
         { status: 500 }
       );
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
 
     const systemInstruction = `You are an expert literary translator and editor. 
 Your goal is to produce a high-fidelity translation that reads like a native English novel while preserving the original meaning, character voice, and narrative tone.
@@ -184,10 +184,10 @@ Guidelines:
         console.log('gemini-2.5-flash failed:', flashError.message);
         
         // 3. Fallback to Google Translate API
-        if (process.env.GOOGLE_TRANSLATE_API_KEY || process.env.GEMINI_API_KEY) {
-           // Assuming we might use GEMINI_API_KEY for Google Cloud Translate if it's the same project 
+        if (process.env.GOOGLE_TRANSLATE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+           // Assuming we might use GOOGLE_GENERATIVE_AI_API_KEY for Google Cloud Translate if it's the same project 
            // but usually they are different. We'll try GOOGLE_TRANSLATE_API_KEY first.
-           const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY || process.env.GEMINI_API_KEY;
+           const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
            try {
              modelName = 'google-translate-api';
              translation = await translateWithGoogle(text!, apiKey!);
