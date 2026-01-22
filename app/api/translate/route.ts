@@ -10,6 +10,7 @@ import {
   getClientIP, 
   logSecurityEvent,
 } from '../../lib/security';
+import { validateTranslationQuality } from '../../lib/quality-validation';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -221,6 +222,16 @@ Guidelines:
       );
     }
 
+    // Quality validation
+    const qualityCheck = validateTranslationQuality(text!, translation);
+    if (!qualityCheck.isAcceptable) {
+      logSecurityEvent('TRANSLATE_LOW_QUALITY', {
+        ip,
+        reason: `Low quality translation: score ${qualityCheck.score}/10. Issues: ${qualityCheck.issues.join(', ')}`
+      });
+      // Still return the translation but with quality warnings
+    }
+
     // Cache the successful translation
     try {
       await translationCache.set(sourceUrl!, chapterNumber!, text!, translation, modelName);
@@ -235,12 +246,19 @@ Guidelines:
       confidence,
       cached: false,
       model: modelName,
-      responseTime
+      responseTime,
+      quality: {
+        score: qualityCheck.score,
+        isAcceptable: qualityCheck.isAcceptable,
+        issues: qualityCheck.issues,
+        warnings: qualityCheck.warnings
+      }
     });
 
     response.headers.set('X-Cache-Hit', 'false');
     response.headers.set('X-Response-Time', `${responseTime}ms`);
     response.headers.set('X-Model-Used', modelName);
+    response.headers.set('X-Quality-Score', qualityCheck.score.toString());
 
     return response;
 
